@@ -1,5 +1,5 @@
 local slib = {
-  _VERSION = 'slib v1.0',
+  _VERSION = 'Slib v1.2',
   _DESCRIPTION = 'Save files easy for Love2D',
   _LICENSE = [[
 MIT LICENSE
@@ -29,7 +29,120 @@ Thanks TSerial for pack and unpack functions!
 ]]
 }
 
-local n = ""
+--[] - brackets in parameters mean, that you can don't use parameter
+
+slib.name = nil
+slib.defaultFilename = "save.dat"
+slib.defaultEncryption = {29, 58, 93, 28, 27}
+
+--Param: Name - Your library name and default parameters
+--       [Filename] - default filename of your save
+--       [Enc] - default encryption code, for ex: {43, 23, 65, 12, 87}
+--Example: Slib = require 'slib'
+--         Slib.init('Slib', 'settings.ini') -- Important Function!
+function slib.init(name, filename, enc)
+  slib.name = name
+  slib.defaultFilename = filename or slib.defaultFilename
+  slib.defaultEncryption = enc or slib.defaultEncryption
+end
+
+--Param: [Filename] - Your save file name
+--Return: True - if it is first save
+--Example: if not Slib.isFirst('mysavefile.save') then
+--           Slib.load('mysavefile.save')
+function slib.isFirst(filename)
+  filename = filename or slib.defaultFilename
+  if love.filesystem.isFile(filename) then
+    return false
+  end
+  return true
+end
+
+--Param:  Table - table to save
+--        [Filename] - filename of your save
+--        [Drop] - add not standart types here (for ex: image, canvas...)
+--Return: Boolean - true, if save done
+--Example: local hero = {image = memory.heroImage,
+--              body = memory.heroBody,
+--              health = 100,
+--              strength = 55, }
+--Slib.save(hero, 'myPosytions.save', {image, body})
+function slib.save(table, filename, drop)
+  filename = filename or slib.defaultFilename
+  
+  if type(drop) == "table" then drop = drop else drop = {drop} or {} end
+  if type(table) ~= "table" then table = {table} end
+  local string = slib.pack(table, drop)
+  
+  love.filesystem.write(filename, string)
+  
+  return true
+end
+
+--Param:  Table - table to save
+--        [Filename] - filename of your save
+--        [Drop] - add not standart types here (for ex: image, canvas...)
+--        [Enc] - encryption code, for ex: {43, 23, 65, 12, 87}
+--Return: Boolean - true, if save done
+--Example: local positions = {0, 10, 20, 30}
+--         Slib.saveE(positions, 'myPosytions.save', nil, {})
+function slib.saveE(table, filename, drop, enc)
+  filename = filename or slib.defaultFilename
+  enc = enc or slib.defaultEncryption
+  
+  if type(drop) == "table" then drop = drop else drop = {drop} or {} end
+  if type(table) ~= "table" then table = {table} end
+    
+  local string = slib.pack(table, drop)
+  
+  local crypted = slib.crypt(string, enc)
+  love.filesystem.write(filename, crypted)
+  love.filesystem.append(filename, "e", 1)
+  
+  return true
+end
+
+--Param:  [Filename] - filename of your save
+--        [Enc] - encryption code, for ex: {55, 55, 55, 55, 55}
+--Return: Table - table, that you save
+--        Boolean - true, if table that you load - not nil
+--Example: heroStats = Slib.load('mysavefile.sav')
+--         --If you save string or number, and want load it:
+--         highscore = unpack(Slib.load('highscore.dat'))
+function slib.load(filename, enc)
+  filename = filename or slib.defaultFilename
+  enc = enc or slib.defaultEncryption
+  local tab = {}
+  local str = nil
+  
+  if love.filesystem.isFile(filename) then
+    local size = love.filesystem.getSize(filename)
+    local str = love.filesystem.read(filename, size)
+    local t = string.len(str)
+    
+    if string.sub(str, t) == 'e' then
+      local str = string.sub(str, 1, t-1)
+      str = slib.crypt(str, enc, true)
+      tab = slib.unpack(str, true)
+    else
+      tab = slib.unpack(str, true)
+    end
+  end
+  
+  local status = tab ~= nil
+  
+  return tab, status
+end
+
+
+--Param:  [Filename] - filename of your save
+--Return: Boolean - true, if file delete success
+--Example: Slib.clear('mysavefile.sav')
+function slib.clear(filename)
+  return love.filesystem.remove( filename )
+end
+
+
 
 function slib.pack(t, drop, indend)
 	assert(type(t) == "table", "Can only slib.pack tables.")
@@ -74,7 +187,8 @@ end
 function slib.unpack(s, safe)
 	if safe then s = string.match(s, "(%b{})") end
   assert(type(s) == "string", "Can only slib.unpack strings.")
-	local f, result = loadstring(n..".table="..s)
+  assert(type(slib.name) == "string", "You must call Slib.init('Slib') first!")
+	local f, result = loadstring(slib.name..".table="..s)
   
 	if not safe then assert(f,result) elseif not f then return nil, result end
 	result = f()
@@ -83,9 +197,7 @@ function slib.unpack(s, safe)
 	return t, result
 end
 
-function slib.init(s)
-  n = s
-end
+
 
 function slib.convert( chars, dist, inv )
   return string.char( ( string.byte( chars ) - 32 + ( inv and -dist or dist ) ) % 95 + 32 )
@@ -113,60 +225,6 @@ function slib.crypt(str, k, inv)
   end
   
   return enc;
-end
-
-function slib.isFirstSave(filename)
-  filename = filename or "save.dat"
-  if love.filesystem.isFile(filename) then
-    return false
-  end
-  return true
-end
-
-function slib.saveE(table, filename, drop, enc)
-  filename = filename or "save.dat"
-  enc = enc or {29, 58, 93, 28, 27}
-  drop = {drop} or {}
-  local string = slib.pack(table, drop)
-  
-  local crypted = slib.crypt(string, enc)
-  love.filesystem.write(filename, crypted)
-  love.filesystem.append(filename, "e", 1)
-  
-  return true
-end
-
-function slib.save(table, filename, drop, enc)
-  filename = filename or "save.dat"
-  enc = enc or {29, 58, 93, 28, 27}
-  drop = {drop} or {}
-  local string = slib.pack(table, drop)
-  
-  love.filesystem.write(filename, string)
-  
-  return true
-end
-
-function slib.load(filename, enc)
-  filename = filename or "save.dat"
-  enc = enc or {29, 58, 93, 28, 27}
-  local tab = {}
-  local str = nil
-  
-  if love.filesystem.isFile(filename) then
-    local size = love.filesystem.getSize(filename)
-    local str = love.filesystem.read(filename, size)
-    local t = string.len(str)
-    
-    if string.sub(str, t) == 'e' then
-      local str = string.sub(str, 1, t-1)
-      str = slib.crypt(str, enc, true)
-      tab = slib.unpack(str, true)
-    else
-      tab = slib.unpack(str, true)
-    end
-  end
-  return tab, true
 end
 
 return slib

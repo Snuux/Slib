@@ -15,7 +15,7 @@ function love.load()
   
   Slib.init("Slib")
   
-  if Slib.isFirstSave(save) then --if there is no save
+  if Slib.isFirst(save) then --if there is no save
     
     g.stats = {} --char stats
     for i=1, 100 do
@@ -40,6 +40,7 @@ function love.update(dt)
     Slib.save(g.stats, save, nil, encription) --save stats (Don't ENCRYPT)
     local endTime = os.clock()
     time.save = endTime - startTime
+    print('Time to save: ' .. time.save)
     
   end
   if love.keyboard.isDown('e') then
@@ -48,6 +49,7 @@ function love.update(dt)
     Slib.saveE(g.stats, save, nil, encription) --save stats (ENCRYPT!!)
     local endTime = os.clock()
     time.saveE = endTime - startTime
+    print('Time to encript save: ' .. time.saveE)
     
   end
   if love.keyboard.isDown('l') then
@@ -56,6 +58,7 @@ function love.update(dt)
     g.stats = Slib.load(save, encription) --load stats!
     local endTime = os.clock()
     time.load = endTime - startTime
+    print('Time to load: ' .. time.load)
     
   end
   

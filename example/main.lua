@@ -15,7 +15,7 @@ end
 function love.load()
   Slib.init("Slib")
     
-  if Slib.isFirstSave(save) then --if there is no save
+  if Slib.isFirst(save) then --if there is no save
     generateNumbers()
   else --if there is save file
     numTable = Slib.load() 
@@ -29,7 +29,7 @@ function love.update(dt)
 end
 
 function love.quit()
-  Slib.saveE(numTable) --save stats (ENCRYPT!!)   
+  Slib.saveE(numTable) --save stats (ENCRYPT!!)
 end
 
 function love.draw()
@@ -41,4 +41,6 @@ function love.draw()
       love.graphics.print(numTable[i][j], 10+(i*10), 30+(j*10))
     end
   end 
+  
+  love.graphics.rectangle('fill', 1, 1, 1, 1)
 end
